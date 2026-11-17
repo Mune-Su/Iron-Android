@@ -66,6 +66,13 @@ jobs:
           grep -n "versionCode\|versionName" android/app/build.gradle
           cat android/app/src/main/res/xml/file_paths.xml
 
+      - name: Use Iron's app icon
+        run: |
+          RES=android/app/src/main/res
+          rm -f $RES/mipmap-*/ic_launcher*.webp
+          cp -r native/res/* $RES/
+          ls $RES/mipmap-xxxhdpi $RES/mipmap-anydpi-v26
+
       - name: Sync web files into Android project
         run: npx cap sync android
 
