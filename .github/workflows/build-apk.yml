@@ -33,6 +33,12 @@ jobs:
             iron-src/ www/
           ls -la www
 
+      - name: Add the in-app update prompt to the web files
+        run: |
+          cp native/native-updater.js www/native-updater.js
+          sed -i 's#</body>#<script src="native-updater.js"></script>\n</body>#I' www/index.html
+          grep -q 'native-updater.js' www/index.html || { echo "Could not add the updater: no </body> in www/index.html"; exit 1; }
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -48,13 +54,17 @@ jobs:
       - name: Create Android project
         run: npx cap add android
 
-      - name: Add mic permission and set version
+      - name: Add native updater, permissions and version
         run: |
+          JAVA_DIR=android/app/src/main/java/com/munesu/iron
+          cp native/IronUpdaterPlugin.java "$JAVA_DIR/IronUpdaterPlugin.java"
+          cp native/MainActivity.java "$JAVA_DIR/MainActivity.java"
           MANIFEST=android/app/src/main/AndroidManifest.xml
-          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n</manifest>#' "$MANIFEST"
+          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n</manifest>#' "$MANIFEST"
           sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"${{ inputs.version }}\"/" android/app/build.gradle
-          grep -n "RECORD_AUDIO" "$MANIFEST"
+          grep -n "RECORD_AUDIO\|REQUEST_INSTALL_PACKAGES\|fileprovider" "$MANIFEST"
           grep -n "versionCode\|versionName" android/app/build.gradle
+          cat android/app/src/main/res/xml/file_paths.xml
 
       - name: Sync web files into Android project
         run: npx cap sync android
